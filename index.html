@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hokie Hub</title>
+<style>
+  :root {
+    color-scheme: light;
+    --maroon: #861F41;
+    --maroon-dark: #6d1935;
+    --orange: #E5751F;
+    --bg: #f6f4f1;
+    --card: #ffffff;
+    --border: #ebe6de;
+    --text: #2a2521;
+    --text-soft: #8b8279;
+    --red: #d64545;
+    --green: #4c8c5a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Header ---------- */
+  .hero {
+    background: linear-gradient(135deg, var(--maroon) 0%, #5e1834 100%);
+    color: #fff;
+    padding: 28px 20px 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+  }
+  .hero-inner { max-width: 900px; margin: 0 auto; position: relative; }
+  .hero-eyebrow {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px;
+    color: rgba(255,255,255,0.7); font-weight: 600; margin-bottom: 6px;
+  }
+  .hero h1 { font-size: 26px; margin: 0 0 6px; font-weight: 700; }
+  .hero p { margin: 0; color: rgba(255,255,255,0.75); font-size: 14px; }
+
+  .wrap { max-width: 900px; margin: -36px auto 60px; padding: 0 20px; position: relative; }
+
+  /* ---------- Stat cards ---------- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
+  .stat {
+    background: var(--card); border-radius: 14px; padding: 16px 18px;
+    box-shadow: 0 4px 18px rgba(80,30,50,0.08); border: 1px solid var(--border);
+  }
+  .stat .num { font-size: 26px; font-weight: 700; line-height: 1; }
+  .stat .label { font-size: 12px; color: var(--text-soft); margin-top: 6px; font-weight: 500; }
+  .stat.overdue .num { color: var(--red); }
+  .stat.soon .num { color: var(--orange); }
+  .stat.todos .num { color: var(--maroon); }
+
+  /* ---------- Tabs (mobile) ---------- */
+  .tabs { display: none; gap: 8px; margin-bottom: 16px; }
+  .tab {
+    flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 13px;
+    font-weight: 600; color: var(--text-soft); background: var(--card); border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .tab.active { background: var(--maroon); color: #fff; border-color: var(--maroon); }
+
+  .columns { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
+
+  .panel {
+    background: var(--card); border-radius: 16px; border: 1px solid var(--border);
+    box-shadow: 0 4px 18px rgba(80,30,50,0.06);
+    padding: 20px 22px;
+  }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .panel-head h2 { font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .panel-head .icon { font-size: 17px; }
+  .sync-note { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
+
+  .empty { color: var(--text-soft); font-size: 13px; padding: 22px 4px; text-align: center; }
+
+  /* ---------- Assignment items ---------- */
+  .assignment {
+    display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+  .assignment:last-child { border-bottom: none; }
+  .assignment .stripe {
+    width: 4px; align-self: stretch; border-radius: 4px; flex-shrink: 0; min-height: 34px;
+    background: var(--green);
+  }
+  .assignment.overdue .stripe { background: var(--red); }
+  .assignment.soon .stripe { background: var(--orange); }
+  .assignment .body { flex: 1; min-width: 0; }
+  .assignment .title { font-weight: 600; font-size: 14px; }
+  .assignment .meta { font-size: 12.5px; color: var(--text-soft); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
+  .pill {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+    padding: 2px 7px; border-radius: 999px;
+  }
+  .pill.overdue { background: #fbe6e6; color: var(--red); }
+  .pill.soon { background: #fdead9; color: var(--orange); }
+  .pill.later { background: #e6f0e8; color: var(--green); }
+
+  /* ---------- Todos ---------- */
+  .todo-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .todo-row:last-child { border-bottom: none; }
+  .checkbox {
+    width: 20px; height: 20px; border: 2px solid #d8d0c5; border-radius: 7px;
+    flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #fff; transition: all .15s ease;
+  }
+  .checkbox.done { background: var(--maroon); border-color: var(--maroon); }
+  .todo-text { flex: 1; font-size: 14px; }
+  .todo-text.strike { text-decoration: line-through; color: var(--text-soft); }
+  .remove-btn {
+    background: none; border: none; color: #d8d0c5; cursor: pointer; font-size: 16px;
+    padding: 4px; line-height: 1; transition: color .15s ease;
+  }
+  .remove-btn:hover { color: var(--red); }
+
+  .add-row { display: flex; gap: 8px; margin-top: 14px; }
+  .add-row input {
+    flex: 1; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 14px; outline: none; transition: border-color .15s ease;
+  }
+  .add-row input:focus { border-color: var(--maroon); }
+  .add-row button {
+    background: var(--maroon); color: #fff; border: none; border-radius: 10px; padding: 0 18px;
+    font-size: 14px; cursor: pointer; font-weight: 600; transition: background .15s ease;
+  }
+  .add-row button:hover { background: var(--maroon-dark); }
+
+  .refresh-btn {
+    background: transparent; color: var(--maroon); border: 1.5px solid var(--maroon);
+    border-radius: 10px; padding: 9px 16px; font-size: 13px; cursor: pointer; font-weight: 600;
+    display: flex; align-items: center; gap: 6px; transition: background .15s ease;
+  }
+  .refresh-btn:hover { background: #fbeef2; }
+  .refresh-btn:disabled { opacity: 0.6; cursor: default; }
+  .refresh-btn .spin { display: inline-block; animation: spin 0.9s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .footer-note {
+    text-align: center; font-size: 12px; color: var(--text-soft); margin-top: 26px;
+  }
+
+  .config-warning {
+    background: #fdf1ef; border: 1px solid #f3c9c1; color: #8a3a2b; border-radius: 10px;
+    padding: 12px 14px; font-size: 13px; margin-bottom: 18px;
+  }
+
+  .skeleton {
+    height: 46px; border-radius: 8px; margin-bottom: 8px;
+    background: linear-gradient(90deg, #f0ece5 25%, #f7f4ef 37%, #f0ece5 63%);
+    background-size: 400% 100%; animation: shimmer 1.4s ease infinite;
+  }
+  @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+  @media (max-width: 720px) {
+    .columns { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(3, 1fr); }
+    .hero h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Virginia Tech</div>
+    <h1>Hokie Hub</h1>
+    <p id="hero-sub">Your Canvas assignments and personal todos, in one place.</p>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="config-warning" class="config-warning" style="display:none;">
+    Set <code>SCRIPT_URL</code> at the top of this file's script to your deployed Apps Script Web App URL.
+  </div>
+
+  <div class="stats">
+    <div class="stat overdue">
+      <div class="num" id="stat-overdue">–</div>
+      <div class="label">Overdue</div>
+    </div>
+    <div class="stat soon">
+      <div class="num" id="stat-soon">–</div>
+      <div class="label">Due this week</div>
+    </div>
+    <div class="stat todos">
+      <div class="num" id="stat-todos">–</div>
+      <div class="label">Todos left</div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-panel="assignments-panel" onclick="switchTab(this)">Assignments</div>
+    <div class="tab" data-panel="todos-panel" onclick="switchTab(this)">Todos</div>
+  </div>
+
+  <div class="columns">
+    <div class="panel" id="assignments-panel">
+      <div class="panel-head">
+        <h2><span class="icon">📚</span> Canvas Assignments</h2>
+        <button class="refresh-btn" id="refresh-btn" onclick="refreshCanvas()">
+          <span id="refresh-icon">⟳</span> Refresh
+        </button>
+      </div>
+      <div id="canvas-list">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
+      <div class="sync-note" id="canvas-status"></div>
+    </div>
+
+    <div class="panel" id="todos-panel">
+      <div class="panel-head">
+        <h2><span class="icon">✅</span> My Todos</h2>
+      </div>
+      <div id="manual-list">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
+      <div class="add-row">
+        <input type="text" id="new-todo" placeholder="Add a todo…" />
+        <button onclick="addTodo()">Add</button>
+      </div>
+      <div class="sync-note">Saved to your Google account — syncs across every device automatically.</div>
+    </div>
+  </div>
+
+  <div class="footer-note">Hokie Hub · synced via Google Apps Script · not affiliated with Virginia Tech IT</div>
+</div>
+
+<script>
+// ==== SET THIS after deploying Code.gs as a Web App (see setup notes in Code.gs) ====
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqcZ_efnT_jKFgS4frrib4CHJwHzRH9cAFLMHshZlfYqVdyBKkTTXLk7gblu6KzrggRA/exec";
+
+if (!SCRIPT_URL || SCRIPT_URL.indexOf('PASTE_') === 0) {
+  document.getElementById('config-warning').style.display = 'block';
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+function fmtDate(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffDays = Math.round((d - now) / 86400000);
+  let rel = '';
+  if (diffDays === 0) rel = 'today';
+  else if (diffDays === 1) rel = 'tomorrow';
+  else if (diffDays === -1) rel = 'yesterday';
+  else if (diffDays > 1) rel = 'in ' + diffDays + ' days';
+  else if (diffDays < -1) rel = Math.abs(diffDays) + ' days ago';
+  const dateStr = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) +
+    ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return dateStr + ' · ' + rel;
+}
+
+async function apiCall(action, params) {
+  const url = new URL(SCRIPT_URL);
+  url.searchParams.set('action', action);
+  if (params) {
+    Object.keys(params).forEach(function (k) { url.searchParams.set(k, params[k]); });
+  }
+  const res = await fetch(url.toString());
+  return res.json();
+}
+
+// ---------------- Tabs (mobile) ----------------
+function switchTab(el) {
+  document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  const target = el.getAttribute('data-panel');
+  document.getElementById('assignments-panel').style.display = target === 'assignments-panel' ? '' : 'none';
+  document.getElementById('todos-panel').style.display = target === 'todos-panel' ? '' : 'none';
+}
+function setupResponsiveTabs() {
+  const isMobile = window.innerWidth <= 720;
+  document.getElementById('tabs').style.display = isMobile ? 'flex' : 'none';
+  if (isMobile) {
+    const activeTab = document.querySelector('.tab.active') || document.querySelector('.tab');
+    switchTab(activeTab);
+  } else {
+    document.getElementById('assignments-panel').style.display = '';
+    document.getElementById('todos-panel').style.display = '';
+  }
+}
+window.addEventListener('resize', setupResponsiveTabs);
+
+// ---------------- Canvas ----------------
+let lastEvents = [];
+function renderCanvasEvents(events) {
+  lastEvents = events;
+  const listEl = document.getElementById('canvas-list');
+  const overdue = events.filter(function (e) { return e.status === 'overdue'; }).length;
+  const soon = events.filter(function (e) { return e.status === 'soon'; }).length;
+  document.getElementById('stat-overdue').textContent = overdue;
+  document.getElementById('stat-soon').textContent = soon;
+
+  if (events.length === 0) {
+    listEl.innerHTML = '<div class="empty">🎉 Nothing on Canvas yet. This fills in automatically once due dates are posted.</div>';
+    return;
+  }
+  listEl.innerHTML = events.map(function (e) {
+    return '<div class="assignment ' + e.status + '">' +
+      '<div class="stripe"></div>' +
+      '<div class="body">' +
+        '<div class="title">' + escapeHtml(e.title || 'Untitled') + '</div>' +
+        '<div class="meta">' +
+          '<span class="pill ' + e.status + '">' + e.status + '</span>' +
+          '<span>' + fmtDate(e.due) + '</span>' +
+        '</div>' +
+      '</div></div>';
+  }).join('');
+}
+
+async function loadCanvas() {
+  const statusEl = document.getElementById('canvas-status');
+  try {
+    const data = await apiCall('canvas');
+    if (data.error) throw new Error(data.error);
+    renderCanvasEvents(data.events || []);
+    statusEl.textContent = 'Last synced ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  } catch (err) {
+    document.getElementById('canvas-list').innerHTML =
+      '<div class="empty">Could not load Canvas feed: ' + escapeHtml(err.message || String(err)) + '</div>';
+  }
+}
+
+async function refreshCanvas() {
+  const btn = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  btn.disabled = true;
+  icon.classList.add('spin');
+  await loadCanvas();
+  icon.classList.remove('spin');
+  btn.disabled = false;
+}
+
+// ---------------- Todos ----------------
+function renderTodoList(todos) {
+  const list = document.getElementById('manual-list');
+  const remaining = todos.filter(function (t) { return !t.done; }).length;
+  document.getElementById('stat-todos').textContent = remaining;
+  if (todos.length === 0) {
+    list.innerHTML = '<div class="empty">Nothing added yet — add your first todo below.</div>';
+    return;
+  }
+  list.innerHTML = todos.map(function (t) {
+    return '<div class="todo-row">' +
+      '<div class="checkbox ' + (t.done ? 'done' : '') + '" onclick="toggleTodo(\'' + t.id + '\')">' + (t.done ? '✓' : '') + '</div>' +
+      '<div class="todo-text ' + (t.done ? 'strike' : '') + '">' + escapeHtml(t.text) + '</div>' +
+      '<button class="remove-btn" onclick="removeTodo(\'' + t.id + '\')">✕</button>' +
+      '</div>';
+  }).join('');
+}
+
+async function loadTodos() {
+  try {
+    const data = await apiCall('todos');
+    renderTodoList(data.todos || []);
+  } catch (err) {
+    document.getElementById('manual-list').innerHTML = '<div class="empty">Could not load todos.</div>';
+  }
+}
+
+async function addTodo() {
+  const input = document.getElementById('new-todo');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const data = await apiCall('addTodo', { text: text });
+  renderTodoList(data.todos || []);
+}
+async function toggleTodo(id) {
+  const data = await apiCall('toggleTodo', { id: id });
+  renderTodoList(data.todos || []);
+}
+async function removeTodo(id) {
+  const data = await apiCall('removeTodo', { id: id });
+  renderTodoList(data.todos || []);
+}
+document.getElementById('new-todo').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') addTodo();
+});
+
+const today = new Date();
+document.getElementById('hero-sub').textContent =
+  'Your Canvas assignments and personal todos, in one place · ' +
+  today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
+setupResponsiveTabs();
+loadCanvas();
+loadTodos();
+</script>
+</body>
+</html>
