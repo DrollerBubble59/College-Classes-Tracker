@@ -99,21 +99,41 @@
     text-transform: uppercase; letter-spacing: 0.4px; padding-bottom: 6px;
   }
   .cal-day {
-    aspect-ratio: 1; border-radius: 10px; padding: 6px; cursor: pointer;
-    display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start;
+    min-height: 84px; border-radius: 10px; padding: 5px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
     background: var(--card-hover); border: 1px solid transparent; transition: all .12s ease;
-    font-size: 12.5px; color: var(--text); position: relative;
+    font-size: 12.5px; color: var(--text); position: relative; overflow: hidden;
   }
   .cal-day:hover { border-color: var(--accent); }
   .cal-day.other-month { opacity: 0.28; }
   .cal-day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
   .cal-day.selected { background: rgba(124,108,245,0.18); border-color: var(--accent); }
-  .cal-dots { display: flex; gap: 3px; margin-top: auto; flex-wrap: wrap; }
-  .cal-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .cal-dot.canvas { background: var(--orange); }
-  .cal-dot.todo { background: var(--accent); }
+  .cal-day-num { font-weight: 700; font-size: 11.5px; margin-bottom: 3px; flex-shrink: 0; }
+  .cal-chips { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .cal-chip {
+    font-size: 9.5px; font-weight: 600; border-radius: 4px; padding: 1.5px 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  }
+  .cal-chip.canvas { background: rgba(240,168,64,0.18); color: var(--orange); }
+  .cal-chip.todo { background: rgba(124,108,245,0.18); color: var(--accent); }
+  .cal-more {
+    font-size: 9.5px; color: var(--text-soft); margin-top: 1px; font-weight: 600; cursor: pointer;
+  }
+  .cal-more:hover { color: var(--accent); }
   .agenda { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
   .agenda-title { font-size: 13px; font-weight: 700; color: var(--text-soft); margin-bottom: 10px; }
+
+  /* ---------- Date-grouped assignment headings ---------- */
+  .date-group:first-child .date-heading { margin-top: 0; }
+  .date-heading {
+    font-size: 13px; font-weight: 700; color: var(--text); margin: 16px 0 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .date-heading .rel-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+    padding: 2px 7px; border-radius: 999px; background: rgba(124,108,245,0.15); color: var(--accent);
+  }
+  .date-heading.overdue .rel-badge { background: rgba(240,96,93,0.15); color: var(--red); }
 
   .columns { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
 
@@ -369,6 +389,37 @@ function showScreen(name) {
 
 // ---------------- Canvas ----------------
 let lastEvents = [];
+
+function dayHeadingLabel(d) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const dOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDays = Math.round((dOnly - now) / 86400000);
+  let rel = null;
+  if (diffDays === 0) rel = 'Today';
+  else if (diffDays === 1) rel = 'Tomorrow';
+  else if (diffDays === -1) rel = 'Yesterday';
+  else if (diffDays < -1) rel = Math.abs(diffDays) + 'd overdue';
+  const dateLabel = d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  return { dateLabel: dateLabel, rel: rel, overdue: diffDays < 0 };
+}
+
+function groupEventsByDate(events) {
+  const groups = [];
+  let currentKey = null, currentGroup = null;
+  events.forEach(function (e) {
+    const d = new Date(e.due);
+    const key = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+    if (key !== currentKey) {
+      currentKey = key;
+      currentGroup = { date: d, items: [] };
+      groups.push(currentGroup);
+    }
+    currentGroup.items.push(e);
+  });
+  return groups;
+}
+
 function renderCanvasEvents(events) {
   lastEvents = events;
   const listEl = document.getElementById('canvas-list');
@@ -381,16 +432,29 @@ function renderCanvasEvents(events) {
     listEl.innerHTML = '<div class="empty">🎉 Nothing on Canvas yet. This fills in automatically once due dates are posted.</div>';
     return;
   }
-  listEl.innerHTML = events.map(function (e) {
-    return '<div class="assignment ' + e.status + '">' +
-      '<div class="stripe"></div>' +
-      '<div class="body">' +
-        '<div class="title">' + escapeHtml(e.title || 'Untitled') + '</div>' +
-        '<div class="meta">' +
-          '<span class="pill ' + e.status + '">' + e.status + '</span>' +
-          '<span>' + fmtDate(e.due) + '</span>' +
-        '</div>' +
-      '</div></div>';
+
+  const groups = groupEventsByDate(events);
+  listEl.innerHTML = groups.map(function (g) {
+    const heading = dayHeadingLabel(g.date);
+    const items = g.items.map(function (e) {
+      const timeStr = new Date(e.due).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      return '<div class="assignment ' + e.status + '">' +
+        '<div class="stripe"></div>' +
+        '<div class="body">' +
+          '<div class="title">' + escapeHtml(e.title || 'Untitled') + '</div>' +
+          '<div class="meta">' +
+            '<span class="pill ' + e.status + '">' + e.status + '</span>' +
+            '<span>' + timeStr + '</span>' +
+          '</div>' +
+        '</div></div>';
+    }).join('');
+    return '<div class="date-group">' +
+      '<div class="date-heading' + (heading.overdue ? ' overdue' : '') + '">' +
+        heading.dateLabel +
+        (heading.rel ? '<span class="rel-badge">' + heading.rel + '</span>' : '') +
+      '</div>' +
+      items +
+      '</div>';
   }).join('');
 }
 
@@ -570,24 +634,41 @@ function renderCalendar() {
       cellD = dayNum;
     }
     const k = dateKey(cellY, cellM, cellD);
-    const evs = eventMap[k];
-    let dots = '';
-    if (evs) {
-      if (evs.canvas.length) dots += '<span class="cal-dot canvas"></span>';
-      if (evs.todo.length) dots += '<span class="cal-dot todo"></span>';
+    const dayItems = combineDayItems(eventMap[k]);
+    const MAX_CHIPS = 3;
+    let chipsHtml = '';
+    dayItems.slice(0, MAX_CHIPS).forEach(function (it) {
+      chipsHtml += '<div class="cal-chip ' + it.type + '">' + escapeHtml(it.label) + '</div>';
+    });
+    const overflow = dayItems.length - MAX_CHIPS;
+    if (overflow > 0) {
+      chipsHtml += '<div class="cal-more">+' + overflow + ' more</div>';
     }
     const classes = ['cal-day'];
     if (otherMonth) classes.push('other-month');
     if (k === todayKey) classes.push('today');
     if (k === calState.selectedKey) classes.push('selected');
     html += '<div class="' + classes.join(' ') + '" onclick="selectDay(\'' + k + '\')">' +
-      cellD +
-      '<div class="cal-dots">' + dots + '</div>' +
+      '<div class="cal-day-num">' + cellD + '</div>' +
+      '<div class="cal-chips">' + chipsHtml + '</div>' +
       '</div>';
   }
   grid.innerHTML = html;
 
   if (calState.selectedKey) renderAgenda(calState.selectedKey, eventMap[calState.selectedKey]);
+}
+
+function combineDayItems(evs) {
+  if (!evs) return [];
+  const items = [];
+  evs.canvas.forEach(function (e) {
+    items.push({ type: 'canvas', time: new Date(e.due), label: e.title || 'Untitled', status: e.status, data: e });
+  });
+  evs.todo.forEach(function (t) {
+    items.push({ type: 'todo', time: new Date(t.date + 'T00:00:00'), label: t.text, done: t.done, data: t });
+  });
+  items.sort(function (a, b) { return a.time - b.time; });
+  return items;
 }
 
 function selectDay(k) {
@@ -603,26 +684,28 @@ function renderAgenda(k, evs) {
   const d = new Date(k + 'T00:00:00');
   titleEl.textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
-  if (!evs || (evs.canvas.length === 0 && evs.todo.length === 0)) {
+  const items = combineDayItems(evs);
+  if (items.length === 0) {
     listEl.innerHTML = '<div class="empty">Nothing due this day.</div>';
     return;
   }
-  let html = '';
-  evs.canvas.forEach(function (e) {
-    html += '<div class="assignment ' + e.status + '">' +
-      '<div class="stripe"></div>' +
-      '<div class="body">' +
-        '<div class="title">' + escapeHtml(e.title || 'Untitled') + '</div>' +
-        '<div class="meta"><span class="pill ' + e.status + '">' + e.status + '</span></div>' +
-      '</div></div>';
-  });
-  evs.todo.forEach(function (t) {
-    html += '<div class="todo-row">' +
+  listEl.innerHTML = items.map(function (it) {
+    if (it.type === 'canvas') {
+      const e = it.data;
+      const timeStr = it.time.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      return '<div class="assignment ' + e.status + '">' +
+        '<div class="stripe"></div>' +
+        '<div class="body">' +
+          '<div class="title">' + escapeHtml(e.title || 'Untitled') + '</div>' +
+          '<div class="meta"><span class="pill ' + e.status + '">' + e.status + '</span><span>' + timeStr + '</span></div>' +
+        '</div></div>';
+    }
+    const t = it.data;
+    return '<div class="todo-row">' +
       '<div class="checkbox ' + (t.done ? 'done' : '') + '" onclick="toggleTodo(\'' + t.id + '\')">' + (t.done ? '✓' : '') + '</div>' +
       '<div class="todo-body"><div class="todo-text ' + (t.done ? 'strike' : '') + '">' + escapeHtml(t.text) + '</div></div>' +
       '</div>';
-  });
-  listEl.innerHTML = html;
+  }).join('');
 }
 
 const today = new Date();
