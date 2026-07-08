@@ -483,10 +483,10 @@ function renderCanvasEvents(events) {
   }).join('');
 }
 
-async function loadCanvas() {
+async function loadCanvas(force) {
   const statusEl = document.getElementById('canvas-status');
   try {
-    const data = await apiCall('canvas');
+    const data = await apiCall('canvas', force ? { force: '1' } : null);
     if (data.error) throw new Error(data.error);
     renderCanvasEvents(data.events || []);
     statusEl.textContent = 'Last synced ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -501,7 +501,7 @@ async function refreshCanvas() {
   const icon = document.getElementById('refresh-icon');
   btn.disabled = true;
   icon.classList.add('spin');
-  await loadCanvas();
+  await loadCanvas(true);
   icon.classList.remove('spin');
   btn.disabled = false;
 }
@@ -565,7 +565,7 @@ async function loadTodos() {
   }
 }
 
-async function addTodo() {
+function addTodo() {
   const input = document.getElementById('new-todo');
   const dateInput = document.getElementById('new-todo-date');
   const text = input.value.trim();
@@ -573,9 +573,22 @@ async function addTodo() {
   const date = dateInput.value || '';
   input.value = '';
   dateInput.value = '';
-  const data = await apiCall('addTodo', { text: text, date: date });
-  renderTodoList(data.todos || []);
+
+  // Optimistic: show it immediately with a temporary id, then reconcile
+  // with the server's authoritative list (which has the real id) once
+  // the request comes back.
+  const tempId = 'tmp-' + Date.now();
+  const optimisticTodo = { id: tempId, text: text, date: date || null, done: false, added: Date.now() };
+  renderTodoList([optimisticTodo].concat(lastTodos));
   renderCalendar();
+
+  apiCall('addTodo', { text: text, date: date }).then(function (data) {
+    renderTodoList(data.todos || []);
+    renderCalendar();
+  }).catch(function () {
+    renderTodoList(lastTodos.filter(function (t) { return t.id !== tempId; }));
+    renderCalendar();
+  });
 }
 function toggleTodo(id) {
   // Optimistic update, same idea as toggleCanvasDone: flip and render
@@ -590,10 +603,14 @@ function toggleTodo(id) {
     renderCalendar();
   });
 }
-async function removeTodo(id) {
-  const data = await apiCall('removeTodo', { id: id });
-  renderTodoList(data.todos || []);
+function removeTodo(id) {
+  const removed = lastTodos.find(function (t) { return t.id === id; });
+  renderTodoList(lastTodos.filter(function (t) { return t.id !== id; }));
   renderCalendar();
+  apiCall('removeTodo', { id: id }).catch(function () {
+    if (removed) renderTodoList(lastTodos.concat([removed]));
+    renderCalendar();
+  });
 }
 document.getElementById('new-todo').addEventListener('keydown', function (e) {
   if (e.key === 'Enter') addTodo();

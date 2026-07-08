@@ -18,7 +18,7 @@ function doGet(e) {
   let result;
   try {
     if (action === 'canvas') {
-      result = { events: getCanvasEvents() };
+      result = { events: getCanvasEvents(e.parameter.force === '1') };
     } else if (action === 'todos') {
       result = { todos: getTodos() };
     } else if (action === 'all') {
@@ -43,10 +43,26 @@ function doGet(e) {
 
 // ---------------- Canvas ----------------
 
-function getCanvasEvents() {
+function getCanvasEventsBase(forceRefresh) {
+  // Cache the parsed Canvas feed for a few minutes so repeated loads
+  // (opening the page again, switching screens) don't re-hit
+  // canvas.vt.edu every time, that network fetch is the slowest part
+  // of any request that needs it. The explicit Refresh button passes
+  // force=1 to bypass this and always get the latest feed.
+  const cache = CacheService.getScriptCache();
+  if (!forceRefresh) {
+    const cached = cache.get('canvasBase');
+    if (cached) return JSON.parse(cached);
+  }
   const resp = UrlFetchApp.fetch(CANVAS_ICS_URL, { muteHttpExceptions: true });
   const text = resp.getContentText();
   const events = parseIcs(text);
+  cache.put('canvasBase', JSON.stringify(events), 300); // 5 minutes
+  return events;
+}
+
+function getCanvasEvents(forceRefresh) {
+  const events = getCanvasEventsBase(forceRefresh);
   const completed = getCompletedCanvasIds();
   events.forEach(function (ev) {
     ev.done = completed.indexOf(ev.uid) !== -1;
