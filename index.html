@@ -441,10 +441,19 @@ function renderAssignmentRow(e, opts) {
     '</div></div>';
 }
 
-async function toggleCanvasDone(uid) {
-  const data = await apiCall('toggleCanvasDone', { uid: uid });
-  renderCanvasEvents(data.events || []);
+function toggleCanvasDone(uid) {
+  // Optimistic update: flip it locally and re-render immediately so the
+  // checkbox feels instant, then sync to the backend in the background.
+  const ev = lastEvents.find(function (e) { return e.uid === uid; });
+  if (ev) ev.done = !ev.done;
+  renderCanvasEvents(lastEvents);
   renderCalendar();
+  apiCall('toggleCanvasDone', { uid: uid }).catch(function () {
+    // If the sync fails, revert the optimistic change.
+    if (ev) ev.done = !ev.done;
+    renderCanvasEvents(lastEvents);
+    renderCalendar();
+  });
 }
 
 function renderCanvasEvents(events) {
@@ -568,10 +577,18 @@ async function addTodo() {
   renderTodoList(data.todos || []);
   renderCalendar();
 }
-async function toggleTodo(id) {
-  const data = await apiCall('toggleTodo', { id: id });
-  renderTodoList(data.todos || []);
+function toggleTodo(id) {
+  // Optimistic update, same idea as toggleCanvasDone: flip and render
+  // instantly, sync in the background, revert only if the call fails.
+  const t = lastTodos.find(function (x) { return x.id === id; });
+  if (t) t.done = !t.done;
+  renderTodoList(lastTodos);
   renderCalendar();
+  apiCall('toggleTodo', { id: id }).catch(function () {
+    if (t) t.done = !t.done;
+    renderTodoList(lastTodos);
+    renderCalendar();
+  });
 }
 async function removeTodo(id) {
   const data = await apiCall('removeTodo', { id: id });

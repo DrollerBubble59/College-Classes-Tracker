@@ -30,7 +30,7 @@ function doGet(e) {
     } else if (action === 'removeTodo') {
       result = { todos: removeTodo(e.parameter.id || '') };
     } else if (action === 'toggleCanvasDone') {
-      result = { events: toggleCanvasDone(e.parameter.uid || '') };
+      result = { completedIds: toggleCanvasDone(e.parameter.uid || '') };
     } else {
       result = { error: 'unknown action: ' + action };
     }
@@ -64,12 +64,16 @@ function saveCompletedCanvasIds(ids) {
 }
 
 function toggleCanvasDone(uid) {
-  if (!uid) return getCanvasEvents();
+  // Note: this intentionally does NOT re-fetch the Canvas ICS feed (that
+  // network round trip is what made checkbox clicks feel slow). It just
+  // flips the id in the completed list; the frontend updates the
+  // assignment's checked state locally without waiting on a fresh fetch.
   const ids = getCompletedCanvasIds();
+  if (!uid) return ids;
   const idx = ids.indexOf(uid);
   if (idx === -1) ids.push(uid); else ids.splice(idx, 1);
   saveCompletedCanvasIds(ids);
-  return getCanvasEvents();
+  return ids;
 }
 
 function parseIcs(text) {
