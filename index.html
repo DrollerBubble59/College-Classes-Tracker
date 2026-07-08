@@ -130,10 +130,14 @@
   }
   .remove-btn:hover { color: var(--red); }
 
-  .add-row { display: flex; gap: 8px; margin-top: 14px; }
-  .add-row input {
-    flex: 1; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+  .add-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .add-row input[type="text"] {
+    flex: 1; min-width: 140px; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px;
     font-size: 14px; outline: none; transition: border-color .15s ease;
+  }
+  .add-row input[type="date"] {
+    padding: 11px 10px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 13px; outline: none; color: var(--text-soft); transition: border-color .15s ease;
   }
   .add-row input:focus { border-color: var(--maroon); }
   .add-row button {
@@ -141,6 +145,11 @@
     font-size: 14px; cursor: pointer; font-weight: 600; transition: background .15s ease;
   }
   .add-row button:hover { background: var(--maroon-dark); }
+  .todo-date {
+    font-size: 11.5px; color: var(--text-soft); margin-top: 2px; font-weight: 500;
+  }
+  .todo-row.overdue .todo-date { color: var(--red); font-weight: 700; }
+  .todo-body { flex: 1; min-width: 0; }
 
   .refresh-btn {
     background: transparent; color: var(--maroon); border: 1.5px solid var(--maroon);
@@ -236,6 +245,7 @@
       </div>
       <div class="add-row">
         <input type="text" id="new-todo" placeholder="Add a todo…" />
+        <input type="date" id="new-todo-date" title="Optional due date" />
         <button onclick="addTodo()">Add</button>
       </div>
       <div class="sync-note">Saved to your Google account — syncs across every device automatically.</div>
@@ -355,18 +365,46 @@ async function refreshCanvas() {
 }
 
 // ---------------- Todos ----------------
-function renderTodoList(todos) {
+function sortTodos(todos) {
+  const dated = todos.filter(function (t) { return !!t.date; });
+  const undated = todos.filter(function (t) { return !t.date; });
+  dated.sort(function (a, b) { return new Date(a.date) - new Date(b.date); });
+  return dated.concat(undated);
+}
+
+function fmtTodoDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((d - now) / 86400000);
+  let rel;
+  if (diffDays === 0) rel = 'Today';
+  else if (diffDays === 1) rel = 'Tomorrow';
+  else if (diffDays === -1) rel = 'Yesterday';
+  else if (diffDays > 1) rel = 'In ' + diffDays + ' days';
+  else rel = Math.abs(diffDays) + ' days ago';
+  const dateLabel = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return dateLabel + ' · ' + rel;
+}
+
+function renderTodoList(todosRaw) {
+  const todos = sortTodos(todosRaw);
   const list = document.getElementById('manual-list');
-  const remaining = todos.filter(function (t) { return !t.done; }).length;
+  const remaining = todosRaw.filter(function (t) { return !t.done; }).length;
   document.getElementById('stat-todos').textContent = remaining;
   if (todos.length === 0) {
     list.innerHTML = '<div class="empty">Nothing added yet — add your first todo below.</div>';
     return;
   }
+  const todayStr = new Date().toISOString().slice(0, 10);
   list.innerHTML = todos.map(function (t) {
-    return '<div class="todo-row">' +
+    const isOverdue = t.date && !t.done && t.date < todayStr;
+    return '<div class="todo-row' + (isOverdue ? ' overdue' : '') + '">' +
       '<div class="checkbox ' + (t.done ? 'done' : '') + '" onclick="toggleTodo(\'' + t.id + '\')">' + (t.done ? '✓' : '') + '</div>' +
-      '<div class="todo-text ' + (t.done ? 'strike' : '') + '">' + escapeHtml(t.text) + '</div>' +
+      '<div class="todo-body">' +
+        '<div class="todo-text ' + (t.done ? 'strike' : '') + '">' + escapeHtml(t.text) + '</div>' +
+        (t.date ? '<div class="todo-date">' + fmtTodoDate(t.date) + '</div>' : '') +
+      '</div>' +
       '<button class="remove-btn" onclick="removeTodo(\'' + t.id + '\')">✕</button>' +
       '</div>';
   }).join('');
@@ -383,10 +421,13 @@ async function loadTodos() {
 
 async function addTodo() {
   const input = document.getElementById('new-todo');
+  const dateInput = document.getElementById('new-todo-date');
   const text = input.value.trim();
   if (!text) return;
+  const date = dateInput.value || '';
   input.value = '';
-  const data = await apiCall('addTodo', { text: text });
+  dateInput.value = '';
+  const data = await apiCall('addTodo', { text: text, date: date });
   renderTodoList(data.todos || []);
 }
 async function toggleTodo(id) {
