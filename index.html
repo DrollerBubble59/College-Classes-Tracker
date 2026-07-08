@@ -161,8 +161,10 @@
   }
   .assignment.overdue .stripe { background: var(--red); }
   .assignment.soon .stripe { background: var(--orange); }
+  .assignment.done .stripe { background: var(--green); }
   .assignment .body { flex: 1; min-width: 0; }
   .assignment .title { font-weight: 600; font-size: 14px; color: var(--text); }
+  .assignment .title.strike { text-decoration: line-through; color: var(--text-soft); font-weight: 500; }
   .assignment .meta { font-size: 12.5px; color: var(--text-soft); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
   .pill {
     font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
@@ -171,6 +173,8 @@
   .pill.overdue { background: rgba(240,96,93,0.15); color: var(--red); }
   .pill.soon { background: rgba(240,168,64,0.15); color: var(--orange); }
   .pill.later { background: rgba(79,201,138,0.15); color: var(--green); }
+  .pill.done { background: rgba(79,201,138,0.2); color: var(--green); }
+  .cal-chip.done { text-decoration: line-through; opacity: 0.55; }
 
   /* ---------- Todos ---------- */
   .todo-row {
@@ -420,11 +424,34 @@ function groupEventsByDate(events) {
   return groups;
 }
 
+function renderAssignmentRow(e, opts) {
+  opts = opts || {};
+  const showTime = opts.showTime !== false;
+  const statusClass = e.done ? 'done' : e.status;
+  const pillLabel = e.done ? 'Completed' : e.status;
+  const timeStr = showTime ? new Date(e.due).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '';
+  return '<div class="assignment ' + statusClass + '">' +
+    '<div class="checkbox ' + (e.done ? 'done' : '') + '" onclick="toggleCanvasDone(\'' + e.uid + '\')">' + (e.done ? '✓' : '') + '</div>' +
+    '<div class="body">' +
+      '<div class="title' + (e.done ? ' strike' : '') + '">' + escapeHtml(e.title || 'Untitled') + '</div>' +
+      '<div class="meta">' +
+        '<span class="pill ' + statusClass + '">' + pillLabel + '</span>' +
+        (timeStr ? '<span>' + timeStr + '</span>' : '') +
+      '</div>' +
+    '</div></div>';
+}
+
+async function toggleCanvasDone(uid) {
+  const data = await apiCall('toggleCanvasDone', { uid: uid });
+  renderCanvasEvents(data.events || []);
+  renderCalendar();
+}
+
 function renderCanvasEvents(events) {
   lastEvents = events;
   const listEl = document.getElementById('canvas-list');
-  const overdue = events.filter(function (e) { return e.status === 'overdue'; }).length;
-  const soon = events.filter(function (e) { return e.status === 'soon'; }).length;
+  const overdue = events.filter(function (e) { return e.status === 'overdue' && !e.done; }).length;
+  const soon = events.filter(function (e) { return e.status === 'soon' && !e.done; }).length;
   document.getElementById('stat-overdue').textContent = overdue;
   document.getElementById('stat-soon').textContent = soon;
 
@@ -436,18 +463,7 @@ function renderCanvasEvents(events) {
   const groups = groupEventsByDate(events);
   listEl.innerHTML = groups.map(function (g) {
     const heading = dayHeadingLabel(g.date);
-    const items = g.items.map(function (e) {
-      const timeStr = new Date(e.due).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-      return '<div class="assignment ' + e.status + '">' +
-        '<div class="stripe"></div>' +
-        '<div class="body">' +
-          '<div class="title">' + escapeHtml(e.title || 'Untitled') + '</div>' +
-          '<div class="meta">' +
-            '<span class="pill ' + e.status + '">' + e.status + '</span>' +
-            '<span>' + timeStr + '</span>' +
-          '</div>' +
-        '</div></div>';
-    }).join('');
+    const items = g.items.map(function (e) { return renderAssignmentRow(e); }).join('');
     return '<div class="date-group">' +
       '<div class="date-heading' + (heading.overdue ? ' overdue' : '') + '">' +
         heading.dateLabel +
@@ -521,7 +537,9 @@ function renderTodoList(todosRaw) {
     return '<div class="todo-row' + (isOverdue ? ' overdue' : '') + '">' +
       '<div class="checkbox ' + (t.done ? 'done' : '') + '" onclick="toggleTodo(\'' + t.id + '\')">' + (t.done ? '✓' : '') + '</div>' +
       '<div class="todo-body">' +
-        '<div class="todo-text ' + (t.done ? 'strike' : '') + '">' + escapeHtml(t.text) + '</div>' +
+        '<div class="todo-text ' + (t.done ? 'strike' : '') + '">' + escapeHtml(t.text) +
+          (t.done ? ' <span class="pill done">Completed</span>' : '') +
+        '</div>' +
         (t.date ? '<div class="todo-date">' + fmtTodoDate(t.date) + '</div>' : '') +
       '</div>' +
       '<button class="remove-btn" onclick="removeTodo(\'' + t.id + '\')">✕</button>' +
@@ -579,14 +597,19 @@ function keyFromIso(iso) {
 
 function buildEventMap() {
   const map = {};
+  const todayKeyStr = (function () { const n = new Date(); return dateKey(n.getFullYear(), n.getMonth(), n.getDate()); })();
   lastEvents.forEach(function (e) {
     if (!e.due) return;
     const k = keyFromIso(e.due);
+    // Keep completed items visible on the calendar through the end of their
+    // due day; only drop them once that day has fully passed.
+    if (e.done && k < todayKeyStr) return;
     if (!map[k]) map[k] = { canvas: [], todo: [] };
     map[k].canvas.push(e);
   });
   lastTodos.forEach(function (t) {
     if (!t.date) return;
+    if (t.done && t.date < todayKeyStr) return;
     if (!map[t.date]) map[t.date] = { canvas: [], todo: [] };
     map[t.date].todo.push(t);
   });
@@ -638,7 +661,7 @@ function renderCalendar() {
     const MAX_CHIPS = 3;
     let chipsHtml = '';
     dayItems.slice(0, MAX_CHIPS).forEach(function (it) {
-      chipsHtml += '<div class="cal-chip ' + it.type + '">' + escapeHtml(it.label) + '</div>';
+      chipsHtml += '<div class="cal-chip ' + it.type + (it.done ? ' done' : '') + '">' + escapeHtml(it.label) + '</div>';
     });
     const overflow = dayItems.length - MAX_CHIPS;
     if (overflow > 0) {
@@ -662,7 +685,7 @@ function combineDayItems(evs) {
   if (!evs) return [];
   const items = [];
   evs.canvas.forEach(function (e) {
-    items.push({ type: 'canvas', time: new Date(e.due), label: e.title || 'Untitled', status: e.status, data: e });
+    items.push({ type: 'canvas', time: new Date(e.due), label: e.title || 'Untitled', status: e.status, done: !!e.done, data: e });
   });
   evs.todo.forEach(function (t) {
     items.push({ type: 'todo', time: new Date(t.date + 'T00:00:00'), label: t.text, done: t.done, data: t });
@@ -691,19 +714,14 @@ function renderAgenda(k, evs) {
   }
   listEl.innerHTML = items.map(function (it) {
     if (it.type === 'canvas') {
-      const e = it.data;
-      const timeStr = it.time.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-      return '<div class="assignment ' + e.status + '">' +
-        '<div class="stripe"></div>' +
-        '<div class="body">' +
-          '<div class="title">' + escapeHtml(e.title || 'Untitled') + '</div>' +
-          '<div class="meta"><span class="pill ' + e.status + '">' + e.status + '</span><span>' + timeStr + '</span></div>' +
-        '</div></div>';
+      return renderAssignmentRow(it.data);
     }
     const t = it.data;
     return '<div class="todo-row">' +
       '<div class="checkbox ' + (t.done ? 'done' : '') + '" onclick="toggleTodo(\'' + t.id + '\')">' + (t.done ? '✓' : '') + '</div>' +
-      '<div class="todo-body"><div class="todo-text ' + (t.done ? 'strike' : '') + '">' + escapeHtml(t.text) + '</div></div>' +
+      '<div class="todo-body"><div class="todo-text ' + (t.done ? 'strike' : '') + '">' + escapeHtml(t.text) +
+        (t.done ? ' <span class="pill done">Completed</span>' : '') +
+      '</div></div>' +
       '</div>';
   }).join('');
 }

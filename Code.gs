@@ -29,6 +29,8 @@ function doGet(e) {
       result = { todos: toggleTodo(e.parameter.id || '') };
     } else if (action === 'removeTodo') {
       result = { todos: removeTodo(e.parameter.id || '') };
+    } else if (action === 'toggleCanvasDone') {
+      result = { events: toggleCanvasDone(e.parameter.uid || '') };
     } else {
       result = { error: 'unknown action: ' + action };
     }
@@ -44,7 +46,30 @@ function doGet(e) {
 function getCanvasEvents() {
   const resp = UrlFetchApp.fetch(CANVAS_ICS_URL, { muteHttpExceptions: true });
   const text = resp.getContentText();
-  return parseIcs(text);
+  const events = parseIcs(text);
+  const completed = getCompletedCanvasIds();
+  events.forEach(function (ev) {
+    ev.done = completed.indexOf(ev.uid) !== -1;
+  });
+  return events;
+}
+
+function getCompletedCanvasIds() {
+  const raw = PropertiesService.getScriptProperties().getProperty('completedCanvas');
+  return raw ? JSON.parse(raw) : [];
+}
+
+function saveCompletedCanvasIds(ids) {
+  PropertiesService.getScriptProperties().setProperty('completedCanvas', JSON.stringify(ids));
+}
+
+function toggleCanvasDone(uid) {
+  if (!uid) return getCanvasEvents();
+  const ids = getCompletedCanvasIds();
+  const idx = ids.indexOf(uid);
+  if (idx === -1) ids.push(uid); else ids.splice(idx, 1);
+  saveCompletedCanvasIds(ids);
+  return getCanvasEvents();
 }
 
 function parseIcs(text) {
