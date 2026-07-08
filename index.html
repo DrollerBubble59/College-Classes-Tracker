@@ -3,20 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hokie Hub</title>
+<title>Work Manager</title>
 <style>
   :root {
-    color-scheme: light;
-    --maroon: #861F41;
-    --maroon-dark: #6d1935;
-    --orange: #E5751F;
-    --bg: #f6f4f1;
-    --card: #ffffff;
-    --border: #ebe6de;
-    --text: #2a2521;
-    --text-soft: #8b8279;
-    --red: #d64545;
-    --green: #4c8c5a;
+    color-scheme: dark;
+    --accent: #7c6cf5;
+    --accent-dark: #6555e0;
+    --orange: #f0a840;
+    --bg: #0f1117;
+    --card: #171a23;
+    --card-hover: #1c2029;
+    --border: #262b38;
+    --text: #e8e9ee;
+    --text-soft: #8b90a3;
+    --red: #f0605d;
+    --green: #4fc98a;
   }
   * { box-sizing: border-box; }
   body {
@@ -29,7 +30,8 @@
 
   /* ---------- Header ---------- */
   .hero {
-    background: linear-gradient(135deg, var(--maroon) 0%, #5e1834 100%);
+    background: linear-gradient(135deg, #1a1d29 0%, #10121a 100%);
+    border-bottom: 1px solid var(--border);
     color: #fff;
     padding: 28px 20px 60px;
     position: relative;
@@ -38,18 +40,18 @@
   .hero::after {
     content: "";
     position: absolute;
-    top: -60px; right: -60px;
-    width: 220px; height: 220px;
-    background: rgba(255,255,255,0.06);
+    top: -80px; right: -80px;
+    width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(124,108,245,0.18) 0%, rgba(124,108,245,0) 70%);
     border-radius: 50%;
   }
   .hero-inner { max-width: 900px; margin: 0 auto; position: relative; }
   .hero-eyebrow {
     font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px;
-    color: rgba(255,255,255,0.7); font-weight: 600; margin-bottom: 6px;
+    color: var(--accent); font-weight: 700; margin-bottom: 6px;
   }
   .hero h1 { font-size: 26px; margin: 0 0 6px; font-weight: 700; }
-  .hero p { margin: 0; color: rgba(255,255,255,0.75); font-size: 14px; }
+  .hero p { margin: 0; color: var(--text-soft); font-size: 14px; }
 
   .wrap { max-width: 900px; margin: -36px auto 60px; padding: 0 20px; position: relative; }
 
@@ -57,13 +59,13 @@
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
   .stat {
     background: var(--card); border-radius: 14px; padding: 16px 18px;
-    box-shadow: 0 4px 18px rgba(80,30,50,0.08); border: 1px solid var(--border);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35); border: 1px solid var(--border);
   }
   .stat .num { font-size: 26px; font-weight: 700; line-height: 1; }
   .stat .label { font-size: 12px; color: var(--text-soft); margin-top: 6px; font-weight: 500; }
   .stat.overdue .num { color: var(--red); }
   .stat.soon .num { color: var(--orange); }
-  .stat.todos .num { color: var(--maroon); }
+  .stat.todos .num { color: var(--accent); }
 
   /* ---------- Tabs (mobile) ---------- */
   .tabs { display: none; gap: 8px; margin-bottom: 16px; }
@@ -72,17 +74,17 @@
     font-weight: 600; color: var(--text-soft); background: var(--card); border: 1px solid var(--border);
     cursor: pointer;
   }
-  .tab.active { background: var(--maroon); color: #fff; border-color: var(--maroon); }
+  .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   .columns { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
 
   .panel {
     background: var(--card); border-radius: 16px; border: 1px solid var(--border);
-    box-shadow: 0 4px 18px rgba(80,30,50,0.06);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
     padding: 20px 22px;
   }
   .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .panel-head h2 { font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .panel-head h2 { font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; color: var(--text); }
   .panel-head .icon { font-size: 17px; }
   .sync-note { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
 
@@ -101,15 +103,15 @@
   .assignment.overdue .stripe { background: var(--red); }
   .assignment.soon .stripe { background: var(--orange); }
   .assignment .body { flex: 1; min-width: 0; }
-  .assignment .title { font-weight: 600; font-size: 14px; }
+  .assignment .title { font-weight: 600; font-size: 14px; color: var(--text); }
   .assignment .meta { font-size: 12.5px; color: var(--text-soft); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
   .pill {
     font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
     padding: 2px 7px; border-radius: 999px;
   }
-  .pill.overdue { background: #fbe6e6; color: var(--red); }
-  .pill.soon { background: #fdead9; color: var(--orange); }
-  .pill.later { background: #e6f0e8; color: var(--green); }
+  .pill.overdue { background: rgba(240,96,93,0.15); color: var(--red); }
+  .pill.soon { background: rgba(240,168,64,0.15); color: var(--orange); }
+  .pill.later { background: rgba(79,201,138,0.15); color: var(--green); }
 
   /* ---------- Todos ---------- */
   .todo-row {
@@ -117,15 +119,15 @@
   }
   .todo-row:last-child { border-bottom: none; }
   .checkbox {
-    width: 20px; height: 20px; border: 2px solid #d8d0c5; border-radius: 7px;
+    width: 20px; height: 20px; border: 2px solid #3a3f4d; border-radius: 7px;
     flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
     font-size: 12px; color: #fff; transition: all .15s ease;
   }
-  .checkbox.done { background: var(--maroon); border-color: var(--maroon); }
-  .todo-text { flex: 1; font-size: 14px; }
+  .checkbox.done { background: var(--accent); border-color: var(--accent); }
+  .todo-text { flex: 1; font-size: 14px; color: var(--text); }
   .todo-text.strike { text-decoration: line-through; color: var(--text-soft); }
   .remove-btn {
-    background: none; border: none; color: #d8d0c5; cursor: pointer; font-size: 16px;
+    background: none; border: none; color: #454b5c; cursor: pointer; font-size: 16px;
     padding: 4px; line-height: 1; transition: color .15s ease;
   }
   .remove-btn:hover { color: var(--red); }
@@ -134,17 +136,19 @@
   .add-row input[type="text"] {
     flex: 1; min-width: 140px; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px;
     font-size: 14px; outline: none; transition: border-color .15s ease;
+    background: #0f1117; color: var(--text);
   }
   .add-row input[type="date"] {
     padding: 11px 10px; border: 1.5px solid var(--border); border-radius: 10px;
     font-size: 13px; outline: none; color: var(--text-soft); transition: border-color .15s ease;
+    background: #0f1117; color-scheme: dark;
   }
-  .add-row input:focus { border-color: var(--maroon); }
+  .add-row input:focus { border-color: var(--accent); }
   .add-row button {
-    background: var(--maroon); color: #fff; border: none; border-radius: 10px; padding: 0 18px;
+    background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 0 18px;
     font-size: 14px; cursor: pointer; font-weight: 600; transition: background .15s ease;
   }
-  .add-row button:hover { background: var(--maroon-dark); }
+  .add-row button:hover { background: var(--accent-dark); }
   .todo-date {
     font-size: 11.5px; color: var(--text-soft); margin-top: 2px; font-weight: 500;
   }
@@ -152,11 +156,11 @@
   .todo-body { flex: 1; min-width: 0; }
 
   .refresh-btn {
-    background: transparent; color: var(--maroon); border: 1.5px solid var(--maroon);
+    background: transparent; color: var(--accent); border: 1.5px solid var(--accent);
     border-radius: 10px; padding: 9px 16px; font-size: 13px; cursor: pointer; font-weight: 600;
     display: flex; align-items: center; gap: 6px; transition: background .15s ease;
   }
-  .refresh-btn:hover { background: #fbeef2; }
+  .refresh-btn:hover { background: rgba(124,108,245,0.12); }
   .refresh-btn:disabled { opacity: 0.6; cursor: default; }
   .refresh-btn .spin { display: inline-block; animation: spin 0.9s linear infinite; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -166,13 +170,13 @@
   }
 
   .config-warning {
-    background: #fdf1ef; border: 1px solid #f3c9c1; color: #8a3a2b; border-radius: 10px;
+    background: rgba(240,96,93,0.1); border: 1px solid rgba(240,96,93,0.3); color: #ff9d9a; border-radius: 10px;
     padding: 12px 14px; font-size: 13px; margin-bottom: 18px;
   }
 
   .skeleton {
     height: 46px; border-radius: 8px; margin-bottom: 8px;
-    background: linear-gradient(90deg, #f0ece5 25%, #f7f4ef 37%, #f0ece5 63%);
+    background: linear-gradient(90deg, #1c2029 25%, #232838 37%, #1c2029 63%);
     background-size: 400% 100%; animation: shimmer 1.4s ease infinite;
   }
   @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
@@ -188,8 +192,8 @@
 
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-eyebrow">Virginia Tech</div>
-    <h1>Hokie Hub</h1>
+    <div class="hero-eyebrow">Work Manager</div>
+    <h1>Work Manager</h1>
     <p id="hero-sub">Your Canvas assignments and personal todos, in one place.</p>
   </div>
 </div>
@@ -252,7 +256,7 @@
     </div>
   </div>
 
-  <div class="footer-note">Hokie Hub · synced via Google Apps Script · not affiliated with Virginia Tech IT</div>
+  <div class="footer-note">Work Manager · synced via Google Apps Script</div>
 </div>
 
 <script>
