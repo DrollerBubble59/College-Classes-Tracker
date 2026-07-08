@@ -67,14 +67,53 @@
   .stat.soon .num { color: var(--orange); }
   .stat.todos .num { color: var(--accent); }
 
-  /* ---------- Tabs (mobile) ---------- */
-  .tabs { display: none; gap: 8px; margin-bottom: 16px; }
-  .tab {
-    flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 13px;
-    font-weight: 600; color: var(--text-soft); background: var(--card); border: 1px solid var(--border);
-    cursor: pointer;
+  /* ---------- Screen nav (Home / Calendar) ---------- */
+  .nav-tabs {
+    display: flex; justify-content: center; gap: 8px; margin-bottom: 22px;
   }
-  .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .nav-btn {
+    display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; color: var(--text-soft); background: var(--card);
+    border: 1px solid var(--border); cursor: pointer; transition: all .15s ease;
+  }
+  .nav-btn .nav-icon { font-size: 16px; line-height: 1; }
+  .nav-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .nav-btn:not(.active):hover { border-color: var(--accent); color: var(--text); }
+
+  /* ---------- Calendar ---------- */
+  .calendar-head {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+  }
+  .calendar-head h2 { margin: 0; font-size: 16px; color: var(--text); }
+  .cal-nav-btn {
+    background: var(--card-hover); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; width: 32px; height: 32px; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: border-color .15s ease;
+  }
+  .cal-nav-btn:hover { border-color: var(--accent); }
+  .calendar-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+  }
+  .cal-dow {
+    text-align: center; font-size: 11px; font-weight: 700; color: var(--text-soft);
+    text-transform: uppercase; letter-spacing: 0.4px; padding-bottom: 6px;
+  }
+  .cal-day {
+    aspect-ratio: 1; border-radius: 10px; padding: 6px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start;
+    background: var(--card-hover); border: 1px solid transparent; transition: all .12s ease;
+    font-size: 12.5px; color: var(--text); position: relative;
+  }
+  .cal-day:hover { border-color: var(--accent); }
+  .cal-day.other-month { opacity: 0.28; }
+  .cal-day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .cal-day.selected { background: rgba(124,108,245,0.18); border-color: var(--accent); }
+  .cal-dots { display: flex; gap: 3px; margin-top: auto; flex-wrap: wrap; }
+  .cal-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .cal-dot.canvas { background: var(--orange); }
+  .cal-dot.todo { background: var(--accent); }
+  .agenda { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
+  .agenda-title { font-size: 13px; font-weight: 700; color: var(--text-soft); margin-bottom: 10px; }
 
   .columns { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
 
@@ -185,6 +224,7 @@
     .columns { grid-template-columns: 1fr; }
     .stats { grid-template-columns: repeat(3, 1fr); }
     .hero h1 { font-size: 30px; }
+    .cal-day { font-size: 11px; }
   }
 </style>
 </head>
@@ -217,41 +257,62 @@
     </div>
   </div>
 
-  <div class="tabs" id="tabs">
-    <div class="tab active" data-panel="assignments-panel" onclick="switchTab(this)">Assignments</div>
-    <div class="tab" data-panel="todos-panel" onclick="switchTab(this)">Todos</div>
+  <div class="nav-tabs">
+    <button class="nav-btn active" id="nav-home" onclick="showScreen('home')">
+      <span class="nav-icon">🏠</span> Home
+    </button>
+    <button class="nav-btn" id="nav-calendar" onclick="showScreen('calendar')">
+      <span class="nav-icon">📅</span> Calendar
+    </button>
   </div>
 
-  <div class="columns">
-    <div class="panel" id="assignments-panel">
-      <div class="panel-head">
-        <h2><span class="icon">📚</span> Canvas Assignments</h2>
-        <button class="refresh-btn" id="refresh-btn" onclick="refreshCanvas()">
-          <span id="refresh-icon">⟳</span> Refresh
-        </button>
+  <div id="home-screen">
+    <div class="columns">
+      <div class="panel" id="assignments-panel">
+        <div class="panel-head">
+          <h2><span class="icon">📚</span> Canvas Assignments</h2>
+          <button class="refresh-btn" id="refresh-btn" onclick="refreshCanvas()">
+            <span id="refresh-icon">⟳</span> Refresh
+          </button>
+        </div>
+        <div id="canvas-list">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+        <div class="sync-note" id="canvas-status"></div>
       </div>
-      <div id="canvas-list">
-        <div class="skeleton"></div>
-        <div class="skeleton"></div>
-        <div class="skeleton"></div>
-      </div>
-      <div class="sync-note" id="canvas-status"></div>
-    </div>
 
-    <div class="panel" id="todos-panel">
-      <div class="panel-head">
-        <h2><span class="icon">✅</span> My Todos</h2>
+      <div class="panel" id="todos-panel">
+        <div class="panel-head">
+          <h2><span class="icon">✅</span> My Todos</h2>
+        </div>
+        <div id="manual-list">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+        <div class="add-row">
+          <input type="text" id="new-todo" placeholder="Add a todo…" />
+          <input type="date" id="new-todo-date" title="Optional due date" />
+          <button onclick="addTodo()">Add</button>
+        </div>
+        <div class="sync-note">Saved to your Google account — syncs across every device automatically.</div>
       </div>
-      <div id="manual-list">
-        <div class="skeleton"></div>
-        <div class="skeleton"></div>
+    </div>
+  </div>
+
+  <div id="calendar-screen" style="display:none;">
+    <div class="panel">
+      <div class="calendar-head">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+        <h2 id="calendar-title">Month Year</h2>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
       </div>
-      <div class="add-row">
-        <input type="text" id="new-todo" placeholder="Add a todo…" />
-        <input type="date" id="new-todo-date" title="Optional due date" />
-        <button onclick="addTodo()">Add</button>
+      <div class="calendar-grid" id="calendar-grid"></div>
+      <div class="agenda" id="calendar-agenda" style="display:none;">
+        <div class="agenda-title" id="agenda-title"></div>
+        <div id="agenda-list"></div>
       </div>
-      <div class="sync-note">Saved to your Google account — syncs across every device automatically.</div>
     </div>
   </div>
 
@@ -296,26 +357,15 @@ async function apiCall(action, params) {
   return res.json();
 }
 
-// ---------------- Tabs (mobile) ----------------
-function switchTab(el) {
-  document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
-  el.classList.add('active');
-  const target = el.getAttribute('data-panel');
-  document.getElementById('assignments-panel').style.display = target === 'assignments-panel' ? '' : 'none';
-  document.getElementById('todos-panel').style.display = target === 'todos-panel' ? '' : 'none';
+// ---------------- Screens (Home / Calendar) ----------------
+function showScreen(name) {
+  const isHome = name === 'home';
+  document.getElementById('home-screen').style.display = isHome ? '' : 'none';
+  document.getElementById('calendar-screen').style.display = isHome ? 'none' : '';
+  document.getElementById('nav-home').classList.toggle('active', isHome);
+  document.getElementById('nav-calendar').classList.toggle('active', !isHome);
+  if (!isHome) renderCalendar();
 }
-function setupResponsiveTabs() {
-  const isMobile = window.innerWidth <= 720;
-  document.getElementById('tabs').style.display = isMobile ? 'flex' : 'none';
-  if (isMobile) {
-    const activeTab = document.querySelector('.tab.active') || document.querySelector('.tab');
-    switchTab(activeTab);
-  } else {
-    document.getElementById('assignments-panel').style.display = '';
-    document.getElementById('todos-panel').style.display = '';
-  }
-}
-window.addEventListener('resize', setupResponsiveTabs);
 
 // ---------------- Canvas ----------------
 let lastEvents = [];
@@ -390,7 +440,9 @@ function fmtTodoDate(dateStr) {
   return dateLabel + ' · ' + rel;
 }
 
+let lastTodos = [];
 function renderTodoList(todosRaw) {
+  lastTodos = todosRaw;
   const todos = sortTodos(todosRaw);
   const list = document.getElementById('manual-list');
   const remaining = todosRaw.filter(function (t) { return !t.done; }).length;
@@ -432,27 +484,153 @@ async function addTodo() {
   dateInput.value = '';
   const data = await apiCall('addTodo', { text: text, date: date });
   renderTodoList(data.todos || []);
+  renderCalendar();
 }
 async function toggleTodo(id) {
   const data = await apiCall('toggleTodo', { id: id });
   renderTodoList(data.todos || []);
+  renderCalendar();
 }
 async function removeTodo(id) {
   const data = await apiCall('removeTodo', { id: id });
   renderTodoList(data.todos || []);
+  renderCalendar();
 }
 document.getElementById('new-todo').addEventListener('keydown', function (e) {
   if (e.key === 'Enter') addTodo();
 });
+
+// ---------------- Calendar ----------------
+const calState = (function () {
+  const now = new Date();
+  return { year: now.getFullYear(), month: now.getMonth(), selectedKey: null };
+})();
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function dateKey(y, m, d) { return y + '-' + pad2(m + 1) + '-' + pad2(d); }
+function keyFromIso(iso) {
+  const d = new Date(iso);
+  return dateKey(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function buildEventMap() {
+  const map = {};
+  lastEvents.forEach(function (e) {
+    if (!e.due) return;
+    const k = keyFromIso(e.due);
+    if (!map[k]) map[k] = { canvas: [], todo: [] };
+    map[k].canvas.push(e);
+  });
+  lastTodos.forEach(function (t) {
+    if (!t.date) return;
+    if (!map[t.date]) map[t.date] = { canvas: [], todo: [] };
+    map[t.date].todo.push(t);
+  });
+  return map;
+}
+
+function changeMonth(delta) {
+  calState.month += delta;
+  if (calState.month < 0) { calState.month = 11; calState.year--; }
+  if (calState.month > 11) { calState.month = 0; calState.year++; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calendar-grid');
+  const title = document.getElementById('calendar-title');
+  const y = calState.year, m = calState.month;
+  const monthName = new Date(y, m, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  title.textContent = monthName;
+
+  const eventMap = buildEventMap();
+  const firstOfMonth = new Date(y, m, 1);
+  const startOffset = firstOfMonth.getDay(); // 0 = Sunday
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const daysInPrevMonth = new Date(y, m, 0).getDate();
+
+  const todayKey = (function () { const n = new Date(); return dateKey(n.getFullYear(), n.getMonth(), n.getDate()); })();
+
+  const dow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  let html = dow.map(function (d) { return '<div class="cal-dow">' + d + '</div>'; }).join('');
+
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - startOffset + 1;
+    let cellY = y, cellM = m, cellD, otherMonth = false;
+    if (dayNum < 1) {
+      cellD = daysInPrevMonth + dayNum;
+      cellM = m - 1; if (cellM < 0) { cellM = 11; cellY--; }
+      otherMonth = true;
+    } else if (dayNum > daysInMonth) {
+      cellD = dayNum - daysInMonth;
+      cellM = m + 1; if (cellM > 11) { cellM = 0; cellY++; }
+      otherMonth = true;
+    } else {
+      cellD = dayNum;
+    }
+    const k = dateKey(cellY, cellM, cellD);
+    const evs = eventMap[k];
+    let dots = '';
+    if (evs) {
+      if (evs.canvas.length) dots += '<span class="cal-dot canvas"></span>';
+      if (evs.todo.length) dots += '<span class="cal-dot todo"></span>';
+    }
+    const classes = ['cal-day'];
+    if (otherMonth) classes.push('other-month');
+    if (k === todayKey) classes.push('today');
+    if (k === calState.selectedKey) classes.push('selected');
+    html += '<div class="' + classes.join(' ') + '" onclick="selectDay(\'' + k + '\')">' +
+      cellD +
+      '<div class="cal-dots">' + dots + '</div>' +
+      '</div>';
+  }
+  grid.innerHTML = html;
+
+  if (calState.selectedKey) renderAgenda(calState.selectedKey, eventMap[calState.selectedKey]);
+}
+
+function selectDay(k) {
+  calState.selectedKey = k;
+  renderCalendar();
+}
+
+function renderAgenda(k, evs) {
+  const agenda = document.getElementById('calendar-agenda');
+  const titleEl = document.getElementById('agenda-title');
+  const listEl = document.getElementById('agenda-list');
+  agenda.style.display = '';
+  const d = new Date(k + 'T00:00:00');
+  titleEl.textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
+  if (!evs || (evs.canvas.length === 0 && evs.todo.length === 0)) {
+    listEl.innerHTML = '<div class="empty">Nothing due this day.</div>';
+    return;
+  }
+  let html = '';
+  evs.canvas.forEach(function (e) {
+    html += '<div class="assignment ' + e.status + '">' +
+      '<div class="stripe"></div>' +
+      '<div class="body">' +
+        '<div class="title">' + escapeHtml(e.title || 'Untitled') + '</div>' +
+        '<div class="meta"><span class="pill ' + e.status + '">' + e.status + '</span></div>' +
+      '</div></div>';
+  });
+  evs.todo.forEach(function (t) {
+    html += '<div class="todo-row">' +
+      '<div class="checkbox ' + (t.done ? 'done' : '') + '" onclick="toggleTodo(\'' + t.id + '\')">' + (t.done ? '✓' : '') + '</div>' +
+      '<div class="todo-body"><div class="todo-text ' + (t.done ? 'strike' : '') + '">' + escapeHtml(t.text) + '</div></div>' +
+      '</div>';
+  });
+  listEl.innerHTML = html;
+}
 
 const today = new Date();
 document.getElementById('hero-sub').textContent =
   'Your Canvas assignments and personal todos, in one place · ' +
   today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
-setupResponsiveTabs();
-loadCanvas();
-loadTodos();
+Promise.all([loadCanvas(), loadTodos()]).then(renderCalendar);
 </script>
 </body>
 </html>
