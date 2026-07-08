@@ -33,7 +33,7 @@
     background: linear-gradient(135deg, #1a1d29 0%, #10121a 100%);
     border-bottom: 1px solid var(--border);
     color: #fff;
-    padding: 28px 20px 60px;
+    padding: 44px 20px 64px;
     position: relative;
     overflow: hidden;
   }
@@ -45,13 +45,13 @@
     background: radial-gradient(circle, rgba(124,108,245,0.18) 0%, rgba(124,108,245,0) 70%);
     border-radius: 50%;
   }
-  .hero-inner { max-width: 900px; margin: 0 auto; position: relative; }
-  .hero-eyebrow {
-    font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px;
-    color: var(--accent); font-weight: 700; margin-bottom: 6px;
+  .hero-inner { max-width: 900px; margin: 0 auto; position: relative; text-align: center; }
+  .hero h1 {
+    font-size: 42px; margin: 0; font-weight: 800; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff 0%, #b9b0f7 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .hero h1 { font-size: 26px; margin: 0 0 6px; font-weight: 700; }
-  .hero p { margin: 0; color: var(--text-soft); font-size: 14px; }
+  .hero p { margin: 10px 0 0; color: var(--text-soft); font-size: 14.5px; }
 
   .wrap { max-width: 900px; margin: -36px auto 60px; padding: 0 20px; position: relative; }
 
@@ -184,7 +184,7 @@
   @media (max-width: 720px) {
     .columns { grid-template-columns: 1fr; }
     .stats { grid-template-columns: repeat(3, 1fr); }
-    .hero h1 { font-size: 22px; }
+    .hero h1 { font-size: 30px; }
   }
 </style>
 </head>
@@ -192,7 +192,6 @@
 
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-eyebrow">Work Manager</div>
     <h1>Work Manager</h1>
     <p id="hero-sub">Your Canvas assignments and personal todos, in one place.</p>
   </div>
